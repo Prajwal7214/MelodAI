@@ -1,96 +1,246 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Signup = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const { signup } = useAuth();
+  const [name, setName]           = useState('');
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showPw, setShowPw]       = useState(false);
+  const [showCPw, setShowCPw]     = useState(false);
+  const [error, setError]         = useState('');
+  const [success, setSuccess]     = useState(false);
+  const [loading, setLoading]     = useState(false);
+
+  const { signup, emailExists } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    
-    signup(email, name);
-    navigate('/');
+    setError('');
+
+    if (!name.trim())           return setError('Please enter your full name.');
+    if (!isValidEmail(email))   return setError('Please enter a valid email address.');
+    if (password.length < 6)    return setError('Password must be at least 6 characters.');
+    if (password !== confirmPw) return setError('Passwords do not match.');
+    if (emailExists(email))     return setError('An account with this email already exists. Please log in.');
+
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 800));
+
+    const trimmedName = name.trim();
+    const initials = trimmedName.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
+    const userData = {
+      name: trimmedName,
+      email,
+      initials,
+      plan: 'free',
+      joinedAt: new Date().toISOString(),
+      _password: password,
+      password,
+    };
+
+    signup(userData);
+    setSuccess(true);
+    await new Promise(r => setTimeout(r, 900));
+    navigate('/generate');
   };
 
-  return (
-    <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Subtle Background Elements */}
-      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-pink-200/50 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-violet-200/50 rounded-full blur-[120px] pointer-events-none"></div>
+  // Password strength 0–4
+  const strength = Math.min(4, Math.floor(password.length / 3));
 
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+  const inputBase = "w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3.5 text-zinc-900 placeholder-zinc-400 text-sm font-medium focus:outline-none focus:border-zinc-400 focus:bg-white transition-all";
+
+  return (
+    <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center px-6 py-10 relative overflow-hidden">
+
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-white rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.05)] p-10 md:p-12 relative z-10 my-10"
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-md relative z-10"
       >
-        <div className="text-center mb-10">
-          <Link to="/" className="inline-flex items-center gap-2 mb-8 group">
-            <span className="text-xl font-bold tracking-tight text-zinc-900 group-hover:text-violet-600 transition-colors">
-              MelodAI
-            </span>
+        {/* Logo / Back link */}
+        <div className="text-center mb-8">
+          <Link
+            to="/"
+            className="inline-block text-sm font-semibold text-zinc-400 hover:text-zinc-700 tracking-tight transition-colors mb-10"
+          >
+            ← MelodAI
           </Link>
-          <h1 className="font-instrument italic text-4xl text-zinc-900 mb-3">Join the rhythm.</h1>
-          <p className="text-zinc-500 font-medium tracking-tight">Create your account to start generating.</p>
+
+          {/* Big italic heading — homepage style */}
+          <h1 className="font-instrument italic text-5xl text-zinc-900 leading-tight mb-2">
+            Join the rhythm.
+          </h1>
+          <p className="text-zinc-500 font-medium tracking-tight text-sm">
+            Create your account to start generating.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-1.5">
-            <label className="block text-sm font-bold text-zinc-700 tracking-tight">Full Name</label>
-            <input 
-              type="text" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Alex Maestro"
-              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3.5 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all font-medium placeholder-zinc-400"
-            />
-          </div>
+        {/* Card */}
+        <div className="bg-white rounded-[28px] shadow-[0_20px_60px_rgba(0,0,0,0.06)] p-8 md:p-10">
 
-          <div className="space-y-1.5">
-            <label className="block text-sm font-bold text-zinc-700 tracking-tight">Email</label>
-            <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3.5 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all font-medium placeholder-zinc-400"
-            />
-          </div>
+          {/* Error */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="flex items-start gap-2.5 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 mb-5 text-sm text-zinc-600"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-zinc-400" />
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <div className="space-y-1.5 pt-1">
-            <label className="block text-sm font-bold text-zinc-700 tracking-tight">Password</label>
-            <input 
-              type="password" 
-              placeholder="••••••••"
-              required
-              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3.5 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all font-medium placeholder-zinc-400"
-            />
-          </div>
+          {/* Success */}
+          <AnimatePresence>
+            {success && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2.5 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 mb-5 text-sm text-zinc-700 font-medium"
+              >
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-zinc-500" />
+                🎉 Welcome to MelodAI! Redirecting...
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <button 
-            type="submit"
-            className="w-full bg-zinc-900 hover:bg-zinc-800 mt-4 text-white rounded-xl px-4 py-4 font-bold tracking-tight shadow-[0_10px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_15px_25px_rgba(0,0,0,0.12)] transition-all flex items-center justify-center gap-2"
-          >
-            Create Account <span className="font-serif italic font-normal text-lg">→</span>
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="space-y-4">
 
-        <div className="mt-8 text-center mb-2">
-          <p className="text-sm font-medium text-zinc-500">
+            {/* Full Name */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => { setName(e.target.value); setError(''); }}
+                placeholder="Alex Maestro"
+                autoComplete="name"
+                className={inputBase}
+              />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setError(''); }}
+                placeholder="you@example.com"
+                autoComplete="email"
+                className={inputBase}
+              />
+            </div>
+
+            {/* Password */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(''); }}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  className={`${inputBase} pr-12`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                >
+                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              {/* Monochrome strength bar */}
+              {password.length > 0 && (
+                <div className="flex gap-1 pt-1">
+                  {[0, 1, 2, 3].map(i => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                        i < strength ? 'bg-zinc-600' : 'bg-zinc-200'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Confirm Password */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showCPw ? 'text' : 'password'}
+                  value={confirmPw}
+                  onChange={e => { setConfirmPw(e.target.value); setError(''); }}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  className={`${inputBase} pr-12 ${
+                    confirmPw && confirmPw !== password ? 'border-zinc-400' : ''
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCPw(!showCPw)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                >
+                  {showCPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit — solid black */}
+            <motion.button
+              type="submit"
+              disabled={loading || success}
+              whileHover={!loading ? { scale: 1.01 } : {}}
+              whileTap={!loading ? { scale: 0.98 } : {}}
+              className="w-full py-4 rounded-xl font-bold text-white text-sm bg-zinc-900 hover:bg-black disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-[0_10px_20px_rgba(0,0,0,0.10)] hover:shadow-[0_14px_28px_rgba(0,0,0,0.15)] mt-1"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                <>Create Account <span className="font-serif italic font-normal text-lg leading-none">→</span></>
+              )}
+            </motion.button>
+          </form>
+
+          {/* Sign in link */}
+          <p className="text-center text-zinc-500 text-sm mt-6 font-medium">
             Already have an account?{' '}
-            <Link to="/login" className="text-violet-600 hover:text-violet-700 font-bold hover:underline">
+            <Link to="/login" className="text-zinc-900 font-bold hover:underline transition-all">
               Log in
             </Link>
           </p>
-        </div>
-        <p className="text-[10px] text-zinc-400 text-center mx-auto max-w-[200px] mt-6">
+
+          <p className="text-[11px] text-zinc-400 text-center mt-4 max-w-[220px] mx-auto leading-relaxed">
             By joining, you agree to our Terms of Service and Privacy Policy.
-        </p>
+          </p>
+        </div>
       </motion.div>
     </div>
   );

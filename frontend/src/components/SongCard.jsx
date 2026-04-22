@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Heart } from 'lucide-react';
+import { Play, Pause, Heart, Disc3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const SongCard = ({ 
@@ -82,7 +82,24 @@ const SongCard = ({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="relative aspect-square mb-3 rounded-lg overflow-hidden bg-zinc-100">
-        <img src={song.artwork || 'https://picsum.photos/seed/101/100/100'} alt={song.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
+        {song.artwork ? (
+          <img
+            src={song.artwork}
+            alt={song.title}
+            className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+        ) : null}
+        {/* Fallback placeholder */}
+        <div
+          className="w-full h-full bg-gradient-to-br from-violet-100 to-pink-100 items-center justify-center absolute inset-0"
+          style={{ display: song.artwork ? 'none' : 'flex' }}
+        >
+          <Disc3 className="w-10 h-10 text-violet-300" />
+        </div>
         
         <div className={`absolute inset-0 transition-all flex items-center justify-center ${isPlaying ? 'bg-black/30' : 'bg-black/20 opacity-0'} ${isHovered ? 'opacity-100' : ''}`}>
           <button className="w-10 h-10 rounded-full bg-violet-600 text-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform">

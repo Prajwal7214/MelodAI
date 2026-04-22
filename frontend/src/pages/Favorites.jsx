@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Heart, Play, Pause, Music4, Disc3 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Heart, Disc3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SongCard from '../components/SongCard';
-import PlayerHeartButton from '../components/PlayerHeartButton';
+import { usePlayer } from '../context/PlayerContext';
 
 const SORT_OPTIONS = ['Recently Added', 'By Mood', 'By Artist'];
 
@@ -10,16 +10,9 @@ const Favorites = () => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortOption, setSortOption] = useState('Recently Added');
-  
-  const [queue, setQueue] = useState([]);
-  const [playingSongId, setPlayingSongId] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef(null);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState(1.0);
   const [toastMessage, setToastMessage] = useState('');
+
+  const { playSong, currentSong, isPlaying } = usePlayer();
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -28,9 +21,6 @@ const Favorites = () => {
 
   useEffect(() => {
     fetchFavorites();
-    return () => {
-      if (audioRef.current) audioRef.current.pause();
-    };
   }, []);
 
   const fetchFavorites = async () => {
@@ -48,95 +38,25 @@ const Favorites = () => {
 
   const getSortedFavorites = () => {
     const list = [...favorites];
-    if (sortOption === 'By Mood') {
-      list.sort((a, b) => (a.mood || '').localeCompare(b.mood || ''));
-    } else if (sortOption === 'By Artist') {
-      list.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
-    }
-    // 'Recently Added' is default from backend (newest first)
+    if (sortOption === 'By Mood') list.sort((a, b) => (a.mood || '').localeCompare(b.mood || ''));
+    else if (sortOption === 'By Artist') list.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
     return list;
   };
 
   const sortedFavorites = getSortedFavorites();
-  const activeSong = queue.find(s => s.id === playingSongId) || favorites.find(s => s.id === playingSongId);
-
-  // Audio Player Logic
-  const formatTime = (time) => {
-    if (isNaN(time)) return "0:00";
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-  };
-
-  const playSong = (song, forceQueue = null) => {
-    const currentQueue = forceQueue || queue.length > 0 ? queue : sortedFavorites;
-    if (queue.length === 0) setQueue(sortedFavorites);
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-    if (!song || !song.preview_url) return;
-
-    const audio = new Audio(song.preview_url);
-    audio.volume = volume;
-    
-    audio.ontimeupdate = () => {
-      setCurrentTime(audio.currentTime);
-      setProgress((audio.currentTime / audio.duration) * 100);
-    };
-    
-    audio.onloadedmetadata = () => {
-      setDuration(audio.duration);
-    };
-
-    audio.onended = () => {
-      playNext(currentQueue, song.id);
-    };
-
-    audioRef.current = audio;
-    audio.play().catch(e => console.log("Play error:", e));
-    setIsPlaying(true);
-    setPlayingSongId(song.id);
-  };
-
-  const togglePlayPause = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        audioRef.current.play();
-        setIsPlaying(true);
-      }
-    } else if (favorites.length > 0 && playingSongId) {
-      playSong(favorites.find(s => s.id === playingSongId));
-    }
-  };
-
-  const playNext = (currentQueue = queue, currentId = playingSongId) => {
-    if (currentQueue.length === 0) return;
-    const currentIndex = currentQueue.findIndex(s => s.id === currentId);
-    if (currentIndex < currentQueue.length - 1) {
-      playSong(currentQueue[currentIndex + 1], currentQueue);
-    }
-  };
-
-  const playPrevious = () => {
-    if (queue.length === 0) return;
-    const currentIndex = queue.findIndex(s => s.id === playingSongId);
-    if (currentIndex > 0) {
-      playSong(queue[currentIndex - 1], queue);
-    }
-  };
 
   const handleRemove = (songId) => {
     setFavorites(prev => prev.filter(s => s.id !== songId));
   };
 
+  const handleSongPlay = (song) => {
+    playSong(song, sortedFavorites);
+  };
+
   return (
-    <div className="min-h-screen bg-[#F5F5F7] text-zinc-900 pt-32 pb-32 px-6 transition-colors duration-500">
+    <div className="min-h-screen bg-[#F5F5F7] text-zinc-900 pt-32 pb-24 px-6 transition-colors duration-500">
       <div className="max-w-5xl mx-auto">
-        
+
         {/* HEADER */}
         <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex items-center gap-4">
@@ -215,11 +135,11 @@ const Favorites = () => {
           <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             <AnimatePresence>
               {sortedFavorites.map((song) => (
-                <SongCard 
-                  key={song.id} 
-                  song={song} 
-                  isPlaying={playingSongId === song.id && isPlaying} 
-                  onPlay={(s) => playSong(s, sortedFavorites)} 
+                <SongCard
+                  key={song.id}
+                  song={song}
+                  isPlaying={currentSong?.id === song.id && isPlaying}
+                  onPlay={handleSongPlay}
                   onToast={showToast}
                   onRemove={handleRemove}
                   isFavoritePage={true}
@@ -231,81 +151,7 @@ const Favorites = () => {
 
       </div>
 
-      {/* GLOBAL MUSIC PLAYER BAR */}
-      <div className="fixed bottom-0 left-0 right-0 h-20 bg-white/80 border-t border-zinc-200 shadow-[0_-10px_40px_rgba(0,0,0,0.04)] px-4 md:px-8 flex items-center justify-between z-50 backdrop-blur-xl">
-        <div className="flex items-center gap-4 w-1/3">
-          <div className="w-12 h-12 bg-zinc-100 rounded-lg overflow-hidden relative group shadow-sm border border-zinc-200/50">
-            {activeSong ? (
-              <img src={activeSong.artwork || 'https://picsum.photos/seed/101/100/100'} alt="Playing track" className="w-full h-full object-cover" />
-            ) : (
-               <div className="w-full h-full bg-zinc-50 flex items-center justify-center">
-                 <Disc3 className="w-5 h-5 text-zinc-400" />
-               </div>
-            )}
-            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Play className="w-4 h-4 text-white ml-0.5" fill="currentColor" />
-            </div>
-          </div>
-          <div className="hidden sm:block">
-            <h4 className="text-sm font-bold tracking-tight text-zinc-900 truncate w-40">{activeSong ? activeSong.title : 'No track playing'}</h4>
-            <p className="text-xs font-medium text-zinc-500 truncate mt-0.5">{activeSong ? activeSong.artist : 'Select a track to play'}</p>
-          </div>
-          {activeSong && (
-            <PlayerHeartButton 
-              song={activeSong} 
-              onToast={showToast} 
-            />
-          )}
-        </div>
-
-        <div className="flex flex-col items-center justify-center w-1/3 space-y-2">
-          <div className="flex items-center gap-6">
-             <button onClick={playPrevious} className="text-zinc-400 hover:text-zinc-600 transition-colors">
-               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
-             </button>
-             <button onClick={togglePlayPause} className="w-10 h-10 rounded-full bg-zinc-900 shadow-md text-white flex items-center justify-center hover:scale-105 hover:bg-black transition-all">
-               {isPlaying ? <Pause className="w-4 h-4" fill="currentColor" /> : <Play className="w-4 h-4 ml-0.5" fill="currentColor" />}
-             </button>
-             <button onClick={playNext} className="text-zinc-400 hover:text-zinc-600 transition-colors">
-               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-             </button>
-          </div>
-          <div className="hidden md:flex items-center w-full max-w-md gap-3">
-            <span className="text-[10px] font-bold text-zinc-400 font-mono">{formatTime(currentTime)}</span>
-            <div className="h-1.5 flex-1 bg-zinc-200 rounded-full overflow-hidden cursor-pointer" onClick={(e) => {
-              if (audioRef.current && duration) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const pos = (e.clientX - rect.left) / rect.width;
-                audioRef.current.currentTime = pos * duration;
-              }
-            }}>
-               <div className="h-full bg-violet-500 rounded-full transition-all duration-75" style={{ width: `${progress || 0}%` }}></div>
-            </div>
-            <span className="text-[10px] font-bold text-zinc-400 font-mono">{formatTime(duration)}</span>
-          </div>
-        </div>
-        
-        <div className="w-1/3 flex justify-end gap-3 text-zinc-400 hidden sm:flex">
-             <button className="hover:text-zinc-600 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
-             </button>
-             <input 
-               type="range" 
-               min="0" 
-               max="1" 
-               step="0.01" 
-               value={volume} 
-               onChange={(e) => {
-                 const newVol = parseFloat(e.target.value);
-                 setVolume(newVol);
-                 if (audioRef.current) audioRef.current.volume = newVol;
-               }} 
-               className="w-24 h-1.5 mt-2.5 accent-zinc-500 bg-zinc-200 rounded-full cursor-pointer" 
-             />
-        </div>
-      </div>
-
-      {/* Toast Notification */}
+      {/* Local toast */}
       <AnimatePresence>
         {toastMessage && (
           <motion.div
@@ -318,7 +164,6 @@ const Favorites = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
     </div>
   );
 };
