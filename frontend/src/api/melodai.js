@@ -1,8 +1,7 @@
 import axios from 'axios'
 
 // ✅ Uses Render URL in production, localhost in development
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
-
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://melodai-lvjv.onrender.com'
 // Test API
 export const testApi = () =>
     axios.get(`${BASE_URL}/api/test-api/`)
