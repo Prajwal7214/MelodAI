@@ -14,10 +14,15 @@
 }
 
 @layer base {
+  html {
+    overscroll-behavior: none;
+  }
+
   body {
     background-color: #FFFFFF;
     color: var(--color-brand-dark);
     font-family: var(--font-satoshi);
     overflow-x: hidden;
+    overscroll-behavior: none;
   }
 }
