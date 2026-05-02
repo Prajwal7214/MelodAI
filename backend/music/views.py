@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from melodai_project.spotify import get_songs_by_mood
-from melodai_project.mongo import music_history_collection
+from melodai_project.mongo import music_history_collection, favourites_collection
 from melodai_project.music_generator import generate_music_from_mood
 from datetime import datetime
 
@@ -138,7 +138,7 @@ def add_favourite(request):
         return Response({"error": "Please provide song data"}, status=400)
 
     # Check if already favourited
-    existing = music_history_collection.database["favourites"].find_one({
+    existing = favourites_collection.find_one({
         "title":  song.get('title'),
         "artist": song.get('artist'),
     })
@@ -164,7 +164,7 @@ def add_favourite(request):
         "added_at":    datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
 
-    music_history_collection.database["favourites"].insert_one(
+    favourites_collection.insert_one(
         favourite_document
     )
     print(f"✅ Added to favourites: {song.get('title')}")
@@ -184,7 +184,7 @@ def remove_favourite(request):
     if not title:
         return Response({"error": "Please provide song title"}, status=400)
 
-    result = music_history_collection.database["favourites"].delete_one({
+    result = favourites_collection.delete_one({
         "title":  title,
         "artist": artist,
     })
@@ -198,7 +198,7 @@ def remove_favourite(request):
 @api_view(['GET'])
 def get_favourites(request):
     favourites = list(
-        music_history_collection.database["favourites"].find(
+        favourites_collection.find(
             {}, {"_id": 0}
         )
     )
@@ -218,7 +218,7 @@ def check_favourite(request):
     title  = request.data.get('title', '')
     artist = request.data.get('artist', '')
 
-    existing = music_history_collection.database["favourites"].find_one({
+    existing = favourites_collection.find_one({
         "title":  title,
         "artist": artist,
     })

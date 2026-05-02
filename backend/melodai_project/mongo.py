@@ -1,26 +1,22 @@
-from pymongo import MongoClient
 import os
-
+from pathlib import Path
 from pymongo import MongoClient
+from dotenv import load_dotenv
 
-MONGO_URI = "mongodb+srv://melodai_user:melodai123@cluster0.t1nfshd.mongodb.net/?appName=Cluster0"
+# Load .env from the project root (two levels up from this file)
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
+MONGO_URI = os.getenv("MONGO_URI")
+
+if not MONGO_URI:
+    raise EnvironmentError(
+        "MONGO_URI is not set. Make sure a .env file exists in the project root "
+        "with MONGO_URI=<your-connection-string>"
+    )
 
 client = MongoClient(MONGO_URI)
 db     = client["melodai_db"]
 
 music_history_collection = db["music_history"]
 favourites_collection    = db["favourites"]
-
-# MongoDB Atlas connection string
-MONGO_URI = os.getenv("MONGO_URI")
-
-client = MongoClient(os.getenv("MONGO_URI"))
-
-# Create/select database
-db = client["melodai_db"]
-
-# Create/select collection
-music_history_collection = db["music_history"]
-
-# ✅ NEW — Favourites collection
-favourites_collection = db["favourites"]
