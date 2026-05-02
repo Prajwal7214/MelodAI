@@ -32,7 +32,10 @@ def generate_music(request):
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     music_history_collection.insert_one(history_document)
-    print(f"✅ Auto-saved to history: {mood} - {context}")
+    try:
+        print(f"[MelodAI] Auto-saved to history: {mood} - {context}".encode('ascii', 'replace').decode())
+    except Exception:
+        pass
 
     return Response({
         "message":         "Music generated successfully",
@@ -167,7 +170,10 @@ def add_favourite(request):
     favourites_collection.insert_one(
         favourite_document
     )
-    print(f"✅ Added to favourites: {song.get('title')}")
+    try:
+        print(f"[MelodAI] Added to favourites: {song.get('title')}".encode('ascii', 'replace').decode())
+    except Exception:
+        pass
 
     return Response({
         "message":  "Song added to favourites",

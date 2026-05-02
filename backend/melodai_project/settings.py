@@ -12,7 +12,7 @@ SECRET_KEY = os.environ.get(
     'django-insecure-melodai-2026'
 )
 
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = True  # Set to False in production via env var: os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
